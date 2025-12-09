@@ -6,9 +6,9 @@ services:
     volumes:
       -postgres_data:/var/lib/postgres/postgres_data
     environment:
-      - POSTGRES_USER=admin
-      - POSTGRES_PASSWORD=password123
-      - POSTGRES_DB=apartment_db
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=@Dear2456
+      - POSTGRES_DB=database.py
     ports:
       -"5432:5432"
   volumes:

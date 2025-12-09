@@ -1,3 +1,18 @@
+###### uvicorn app.main:app --reload #####
+###### alembic revision --autogenerate -m "command" #####
+###### alembic upgrade head #####
+###### (ถ้ามี venv ให้ activate ก่อน) ######
+###### venv\Scripts\activate ######
+###### alembic current ######
+###### pip install -r requirements.txt ######
+###### [alembic]
+# script_location = alembic
+###### cd backend
+# alembic -c alembic.ini current
+# alembic -c alembic.ini upgrade head
+
+
+
 annotated-doc==0.0.4
 annotated-types==0.7.0
 anyio==4.11.0

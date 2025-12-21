@@ -212,11 +212,10 @@ def login(
             detail="Login failed",
         )
 
-    # 🔴 จุดที่เคยมีปัญหา: เดิมใช้ sub = user.email → ถ้า email เป็น NULL, token จะไม่มี sub
-    # ✅ แก้ให้ใช้ id เป็น sub เสมอ
+    # ✅ ใช้ id เป็น sub เสมอ (เสถียร)
     access_token = create_access_token(
         data={
-            "sub": str(user.id),          # ใช้ id เป็นตัวอ้างอิงหลัก
+            "sub": str(user.id),
             "role": user.role,
             "email": user.email or "",
         }
@@ -226,7 +225,7 @@ def login(
         "access_token": access_token,
         "token_type": "bearer",
         "user_role": user.role,
-        "user_name": user.first_name,  # ใช้ชื่อจริงไปแสดงใน UI
+        "user_name": user.first_name,
         "profile_image": user.profile_image,
     }
 
@@ -377,3 +376,66 @@ def reset_password(
     session.commit()
 
     return {"message": "เปลี่ยนรหัสผ่านสำเร็จ"}
+
+
+# =========================================================
+# ✅ Compat Layer (เพิ่มใหม่): ให้ import เก่าใช้ได้
+# - ไม่กระทบ logic เก่า เพราะ "เรียก jwt.decode แบบเดียวกับ get_current_user"
+# =========================================================
+
+def _extract_bearer(token_or_bearer: Optional[str]) -> Optional[str]:
+    if not token_or_bearer:
+        return None
+    v = token_or_bearer.strip()
+    if v.lower().startswith("bearer "):
+        return v.split(" ", 1)[1].strip()
+    return v
+
+
+def get_user_from_token(token: str, session: Session) -> User:
+    """
+    ✅ รองรับ code เก่าที่เรียก get_user_from_token(token, session)
+    """
+    token = _extract_bearer(token) or ""
+    if not token:
+        raise HTTPException(status_code=401, detail="Missing token")
+
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id_str: Optional[str] = payload.get("sub")
+        if not user_id_str:
+            raise HTTPException(status_code=401, detail="token ไม่มีข้อมูลผู้ใช้ (sub)")
+        user_id = int(user_id_str)
+    except (JWTError, ValueError):
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    user = session.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found")
+    return user
+
+
+def get_user_from_ws_token(websocket, session: Session) -> User:
+    """
+    ✅ ให้ chat.py import ได้: get_user_from_ws_token(websocket, session)
+    - token จาก query (?token=xxx)
+    - หรือจาก header Authorization
+    """
+    token = None
+
+    # ws.query_params / ws.headers (ใช้ได้กับ starlette WebSocket)
+    try:
+        token = _extract_bearer(websocket.query_params.get("token"))
+    except Exception:
+        token = None
+
+    if not token:
+        try:
+            token = _extract_bearer(websocket.headers.get("authorization"))
+        except Exception:
+            token = None
+
+    if not token:
+        raise HTTPException(status_code=401, detail="Missing token")
+
+    return get_user_from_token(token, session)

@@ -1,21 +1,25 @@
-from pydantic import BaseModel
-from typing import Optional
+# backend/app/schemas/tenant.py
+from __future__ import annotations
 
-# Base Schema (ข้อมูลพื้นฐาน)
+from typing import Optional
+from pydantic import BaseModel
+
+
 class TenantBase(BaseModel):
     first_name: str
     last_name: str
     phone: str
+    email: Optional[str] = None
     id_card_number: str
     status: str = "active"
 
-# Schema สำหรับตอนสร้าง (Request)
+
 class TenantCreate(TenantBase):
     pass
 
-# Schema สำหรับตอนตอบกลับ (Response) - จะมี ID ด้วย
+
 class TenantRead(TenantBase):
     id: int
 
     class Config:
-        from_attributes = True
+        from_attributes = True  # ✅ Pydantic v2
